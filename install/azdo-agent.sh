@@ -1,85 +1,93 @@
 #!/usr/bin/env bash
 # ----------------------------------------------------------------------------------
-# Title:        Azure DevOps Agent - LXC Installer for Proxmox VE
-# Description:  Deploys an Ubuntu LXC container and installs Azure Pipelines Agent
-# Author:       Janusz Nowak (based on community-scripts/ProxmoxVE templates)
+# Name: azdo-agent.sh
+# Description: Install Azure DevOps Self-Hosted Agent in an LXC container on Proxmox
+# Based on: https://github.com/community-scripts/ProxmoxVE
 # ----------------------------------------------------------------------------------
 
 set -Eeuo pipefail
-shopt -s expand_aliases
+trap 'echo "Error on line $LINENO"' ERR
 
-# --- Predefine required variables for build.func ---
-export BRG="vmbr0"                           # Default Proxmox network bridge
-export RANDOM_UUID=$(cat /proc/sys/kernel/random/uuid)
-export DIAGNOSTICS=false                     # Disable build diagnostics
-export NSAPP="Azure DevOps Agent"            # App name for log headers
-export MAC=""                                # placeholder, set later
+# Load helper functions
+source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/build.func)
 
-# --- Load community build functions ---
-REPO="https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main"
-source <(curl -fsSL ${REPO}/misc/build.func)
-
-# --- Container configuration ---
+# ----------------------------------------------------------------------------------
+# Script Metadata
+# ----------------------------------------------------------------------------------
 APP="azdo-agent"
+var_os="debian"
+var_version="12"
 var_cpu="2"
-var_ram="4096"
-var_disk="10"
-var_os="ubuntu"
-var_version="22.04"
-var_features="nesting=1,keyctl=1,fuse=1"
-var_unprivileged="1"
+var_ram="2048"
+var_disk="8"
+var_network="1"
+var_user="azdo"
+var_pass="Azdo123!"
+var_ctid_next
+default_ctid
 
-# --- Build container ---
-build_container
+# ----------------------------------------------------------------------------------
+# Load Variable Dialogs (enables whiptail prompts)
+# ----------------------------------------------------------------------------------
+variables
 
-# --- Generate MAC address based on CTID ---
-if [[ -n "${CTID:-}" ]]; then
-  # Get CTID in 4-digit hexadecimal (e.g., 2005 → 0x07D5)
-  HEXID=$(printf '%04x' "$CTID")
-  # Use last four hex digits as final two MAC bytes
-  export MAC="00:00:00:00:${HEXID:0:2}:${HEXID:2:2}"
-  pct set "$CTID" -net0 "name=eth0,bridge=${BRG},hwaddr=${MAC},ip=dhcp"
-  msg_info "Assigned MAC address based on CTID ${CTID}: ${MAC}"
-else
-  msg_warn "CTID not defined; skipping MAC assignment."
+# ----------------------------------------------------------------------------------
+# Default MAC (if user skipped input)
+# ----------------------------------------------------------------------------------
+if [[ -z "${MAC:-}" ]]; then
+  printf -v MAC "00:00:00:00:%02X:%02X" $((CTID/256)) $((CTID%256))
 fi
 
-# --- Post-create installation inside container ---
-container_exec() {
-  cat <<'INCONTAINER' | bash -e
-    set -Eeuo pipefail
-    apt-get update
-    apt-get install -y curl jq unzip apt-transport-https ca-certificates gnupg lsb-release sudo
+# ----------------------------------------------------------------------------------
+# Create Container
+# ----------------------------------------------------------------------------------
+msg_info "Creating LXC container..."
+pct create "$CTID" "$var_os:$var_version" \
+  -arch amd64 \
+  -hostname "$APP" \
+  -net0 "name=eth0,bridge=${BRG:-vmbr0},ip=${NET:-dhcp},tag=${TAG:-},gw=${GW:-},firewall=1,macaddr=${MAC}" \
+  -cores "$var_cpu" \
+  -memory "$var_ram" \
+  -rootfs "${STORAGE:-local-lvm}:${var_disk}" \
+  -unprivileged 1 \
+  -features nesting=1 \
+  -password "$var_pass"
+msg_ok "Container $CTID created with MAC $MAC"
 
-    # Create user for the agent
-    useradd -m -s /bin/bash azdo || true
-    cd /home/azdo
+# ----------------------------------------------------------------------------------
+# Start Container
+# ----------------------------------------------------------------------------------
+pct start "$CTID"
+sleep 5
 
-    # Download latest Azure Pipelines agent
-    echo "Fetching latest Azure Pipelines agent version..."
-    AGENT_VERSION=$(curl -s https://api.github.com/repos/microsoft/azure-pipelines-agent/releases/latest | jq -r '.tag_name')
-    AGENT_VERSION_CLEAN=${AGENT_VERSION#v}
+# ----------------------------------------------------------------------------------
+# Inside the Container: Install Azure DevOps Agent
+# ----------------------------------------------------------------------------------
+msg_info "Installing Azure DevOps Agent inside container..."
 
-    echo "Downloading agent version $AGENT_VERSION_CLEAN..."
-    curl -fsSL -o agent.tar.gz "https://vstsagentpackage.azureedge.net/agent/${AGENT_VERSION_CLEAN}/vsts-agent-linux-x64-${AGENT_VERSION_CLEAN}.tar.gz"
-    tar zxvf agent.tar.gz
-    chown -R azdo:azdo /home/azdo
+pct exec "$CTID" -- bash -c "
+  set -e
+  apt-get update -y
+  apt-get install -y curl tar jq git libicu-dev
+  useradd -m $var_user || true
+  cd /home/$var_user
+  AGENT_VERSION=\$(curl -s https://api.github.com/repos/microsoft/azure-pipelines-agent/releases/latest | jq -r '.tag_name' | sed 's/v//')
+  curl -LsO https://vstsagentpackage.azureedge.net/agent/\$AGENT_VERSION/vsts-agent-linux-x64-\$AGENT_VERSION.tar.gz
+  tar zxvf vsts-agent-linux-x64-\$AGENT_VERSION.tar.gz
+  chown -R $var_user:$var_user /home/$var_user
+"
 
-    echo "-------------------------------------------------------------"
-    echo "✅ Azure DevOps agent files installed at /home/azdo"
-    echo "-------------------------------------------------------------"
-    echo "To configure this agent, connect into the container and run:"
-    echo "  sudo -u azdo ./config.sh"
-    echo "Then start the service with:"
-    echo "  sudo -u azdo ./svc.sh install"
-    echo "  sudo -u azdo ./svc.sh start"
-    echo "-------------------------------------------------------------"
-INCONTAINER
-}
+msg_ok "Azure DevOps Agent downloaded and unpacked."
 
-# --- Run post-create steps ---
-post_create container_exec
-
-# --- Summary ---
-msg_ok "Azure DevOps LXC Agent Container setup complete!"
-msg_info "Connect via: pct enter ${CTID}"
+# ----------------------------------------------------------------------------------
+# Instructions to finalize setup
+# ----------------------------------------------------------------------------------
+msg_info "To finalize agent setup, run inside container:"
+echo
+echo "pct exec $CTID -- bash"
+echo "su - $var_user"
+echo "./config.sh --url https://dev.azure.com/<ORG> --auth pat --token <TOKEN> --pool <POOLNAME> --agent $(hostname)"
+echo "sudo ./svc.sh install"
+echo "sudo ./svc.sh start"
+echo
+msg_ok "Azure DevOps agent ready to configure."
