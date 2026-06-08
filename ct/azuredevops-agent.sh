@@ -2,7 +2,7 @@
 source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/build.func)
 
 # Copyright (c) 2025 community-scripts ORG
-# Author: YourName
+# Author: JanuszNowak
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
 # Source: https://learn.microsoft.com/en-us/azure/devops/pipelines/agents/linux-agent
 
@@ -97,26 +97,46 @@ function install_azuredevops_agent() {
   fi
   msg_ok "Using agent version ${AGENT_VERSION}"
 
+  msg_info "Testing network connectivity"
+  pct exec "$CT_ID" -- bash -c "
+    getent hosts github.com >/dev/null 2>&1 || exit 1
+    getent hosts download.agent.dev.azure.com >/dev/null 2>&1 || exit 2
+  "
+  msg_ok "Network connectivity looks good"
+
   msg_info "Downloading Azure Pipelines agent"
   pct exec "$CT_ID" -- bash -c "
     set -e
     install -d -o azureagent -g azureagent /home/azureagent/agent
     cd /home/azureagent/agent
-    curl -fsSL -o agent.tar.gz https://vstsagentpackage.azureedge.net/agent/${AGENT_VERSION}/vsts-agent-linux-x64-${AGENT_VERSION}.tar.gz
+
+    AGENT_FILE=vsts-agent-linux-x64-${AGENT_VERSION}.tar.gz
+    PRIMARY_URL=https://download.agent.dev.azure.com/agent/${AGENT_VERSION}/\${AGENT_FILE}
+    FALLBACK_URL=https://vstsagentpackage.azureedge.net/agent/${AGENT_VERSION}/\${AGENT_FILE}
+
+    curl -fsSL -o agent.tar.gz \"\${PRIMARY_URL}\" || curl -fsSL -o agent.tar.gz \"\${FALLBACK_URL}\"
+
     tar -xzf agent.tar.gz
     chown -R azureagent:azureagent /home/azureagent/agent
   "
   msg_ok "Downloaded Azure Pipelines agent"
 
   msg_info "Writing Azure DevOps configuration"
-  pct exec "$CT_ID" -- bash -c "cat > /home/azureagent/agent/.azdo.env <<'EOF'
-AZP_URL=$(printf '%s' "$AZP_URL")
-AZP_POOL=$(printf '%s' "$AZP_POOL")
-AZP_AGENT_NAME=$(printf '%s' "$AZP_AGENT_NAME")
-AZP_TOKEN=$(printf '%s' "$AZP_TOKEN")
+  ESC_AZP_URL="$(printf '%q' "$AZP_URL")"
+  ESC_AZP_POOL="$(printf '%q' "$AZP_POOL")"
+  ESC_AZP_AGENT_NAME="$(printf '%q' "$AZP_AGENT_NAME")"
+  ESC_AZP_TOKEN="$(printf '%q' "$AZP_TOKEN")"
+
+  pct exec "$CT_ID" -- bash -c "
+    cat > /home/azureagent/agent/.azdo.env <<EOF
+AZP_URL=${ESC_AZP_URL}
+AZP_POOL=${ESC_AZP_POOL}
+AZP_AGENT_NAME=${ESC_AZP_AGENT_NAME}
+AZP_TOKEN=${ESC_AZP_TOKEN}
 EOF
-chown azureagent:azureagent /home/azureagent/agent/.azdo.env
-chmod 600 /home/azureagent/agent/.azdo.env"
+    chown azureagent:azureagent /home/azureagent/agent/.azdo.env
+    chmod 600 /home/azureagent/agent/.azdo.env
+  "
   msg_ok "Configuration file created"
 
   msg_info "Configuring Azure Pipelines agent"
