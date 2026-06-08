@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/build.func)
-# Copyright (c) 2021-2025 community-scripts ORG
+# Copyright (c) 2021-2026 community-scripts ORG
 # Author: MickLesk (CanbiZ)
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
-# Source: https://docmost.com/
+# Source: https://docmost.com/ | Github: https://github.com/docmost/docmost
 
 APP="Docmost"
 var_tags="${var_tags:-documents}"
@@ -12,6 +12,7 @@ var_ram="${var_ram:-4096}"
 var_disk="${var_disk:-8}"
 var_os="${var_os:-debian}"
 var_version="${var_version:-13}"
+var_arm64="${var_arm64:-no}"
 
 header_info "$APP"
 variables
@@ -32,9 +33,9 @@ function update_script() {
   export NODE_OPTIONS="--max_old_space_size=4096"
 
   if check_for_gh_release "docmost" "docmost/docmost"; then
-    msg_info "Stopping ${APP}"
+    msg_info "Stopping Service"
     systemctl stop docmost
-    msg_ok "${APP} Stopped"
+    msg_ok "Stopped Service"
 
     msg_info "Backing up data"
     cp /opt/docmost/.env /opt/
@@ -42,20 +43,31 @@ function update_script() {
     rm -rf /opt/docmost
     msg_ok "Data backed up"
 
-    fetch_and_deploy_gh_release "docmost" "docmost/docmost"
+    fetch_and_deploy_gh_release "docmost" "docmost/docmost" "tarball"
 
     msg_info "Updating ${APP}"
     cd /opt/docmost
     mv /opt/.env /opt/docmost/.env
     mv /opt/data /opt/docmost/data
+
+    # Fix: Docmost EE (audit logs etc.) lives in a git submodule that is NOT
+    # included in GitHub tarballs.  The community NoopAuditService exists but
+    # is only exported by CoreModule – child modules such as UserModule cannot
+    # resolve it.  Making CoreModule @Global() exposes the token app-wide.
+    if [[ ! -f /opt/docmost/apps/server/src/ee/ee.module.ts ]] \
+      && ! grep -q '@Global()' /opt/docmost/apps/server/src/core/core.module.ts 2>/dev/null; then
+      sed -i '/^  Module,$/a\  Global,' /opt/docmost/apps/server/src/core/core.module.ts
+      sed -i '/^@Module({$/i @Global()' /opt/docmost/apps/server/src/core/core.module.ts
+    fi
+
     $STD pnpm install --force
     $STD pnpm build
     msg_ok "Updated ${APP}"
 
-    msg_info "Starting ${APP}"
+    msg_info "Starting Service"
     systemctl start docmost
-    msg_ok "Started ${APP}"
-    msg_ok "Updated Successfully"
+    msg_ok "Started Service"
+    msg_ok "Updated successfully!"
   fi
   exit
 }
@@ -64,7 +76,7 @@ start
 build_container
 description
 
-msg_ok "Completed Successfully!\n"
+msg_ok "Completed successfully!\n"
 echo -e "${CREATING}${GN}${APP} setup has been successfully initialized!${CL}"
-echo -e "${INFO}${YW} Access it using the following URL:${CL}"
-echo -e "${TAB}${GATEWAY}${BGN}http://${IP}:3000${CL}"
+echo -e "${INFO}${YW}Access it using the following URL:${CL}"
+echo -e "${GATEWAY}${BGN}http://${IP}:3000${CL}"

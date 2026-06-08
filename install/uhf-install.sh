@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
-# Copyright (c) 2021-2025 community-scripts ORG
+# Copyright (c) 2021-2026 community-scripts ORG
 # Author: zackwithak13
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
-# Source: https://www.uhfapp.com/server
+# Source: https://www.uhfapp.com/server | Github: https://github.com/swapplications/uhf-server-dist
 
 source /dev/stdin <<<"$FUNCTIONS_FILE_PATH"
 color
@@ -12,9 +12,10 @@ catch_errors
 setting_up_container
 network_check
 update_os
+setup_hwaccel
 
 msg_info "Installing Dependencies"
-$STD apt install -y ffmpeg
+setup_ffmpeg
 msg_ok "Installed Dependencies"
 
 msg_info "Setting Up UHF Server Environment"
@@ -51,8 +52,4 @@ msg_ok "Created Service"
 
 motd_ssh
 customize
-
-msg_info "Cleaning up"
-$STD apt-get -y autoremove
-$STD apt-get -y autoclean
-msg_ok "Cleaned"
+cleanup_lxc

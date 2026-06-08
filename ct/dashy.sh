@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/build.func)
-# Copyright (c) 2021-2025 tteck
-# Author: tteck (tteckster)
+# Copyright (c) 2021-2026 community-scripts ORG
+# Author: tteck (tteckster) | Co-Author: CrazyWolf13
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
 # Source: https://dashy.to/
 
@@ -11,7 +11,8 @@ var_cpu="${var_cpu:-2}"
 var_ram="${var_ram:-2048}"
 var_disk="${var_disk:-6}"
 var_os="${var_os:-debian}"
-var_version="${var_version:-12}"
+var_version="${var_version:-13}"
+var_arm64="${var_arm64:-no}"
 var_unprivileged="${var_unprivileged:-1}"
 
 header_info "$APP"
@@ -23,46 +24,39 @@ function update_script() {
   header_info
   check_container_storage
   check_container_resources
-  if [[ ! -d /opt/dashy/public/ ]]; then
+  if [[ ! -d /opt/dashy ]]; then
     msg_error "No ${APP} Installation Found!"
     exit
   fi
+
+  NODE_VERSION="24" NODE_MODULE="yarn" setup_nodejs
+
   if check_for_gh_release "dashy" "Lissy93/dashy"; then
-    msg_info "Stopping ${APP}"
+    msg_info "Stopping Service"
     systemctl stop dashy
-    msg_ok "Stopped ${APP}"
+    msg_ok "Stopped Service"
 
-    msg_info "Backing up conf.yml"
-    cd ~
-    if [[ -f /opt/dashy/public/conf.yml ]]; then
-      cp -R /opt/dashy/public/conf.yml conf.yml
-    else
-      cp -R /opt/dashy/user-data/conf.yml conf.yml
-    fi
-    msg_ok "Backed up conf.yml"
+    msg_info "Backing up user-data"
+    rm -rf /opt/dashy_user_data_backup
+    cp -r /opt/dashy/user-data /opt/dashy_user_data_backup
+    msg_ok "Backed up user-data"
 
-    rm -rf /opt/dashy
-    fetch_and_deploy_gh_release "dashy" "Lissy93/dashy"
+    CLEAN_INSTALL=1 fetch_and_deploy_gh_release "dashy" "lissy93/dashy" "prebuild" "latest" "/opt/dashy" "dashy-*.tar.gz"
 
-    msg_info "Updating ${APP}"
+    msg_info "Updating Dashy"
     cd /opt/dashy
-    npm install
-    npm run build
-    msg_ok "Updated ${APP}"
+    $STD yarn install --ignore-engines --network-timeout 300000
+    msg_ok "Updated Dashy"
 
-    msg_info "Restoring conf.yml"
-    cd ~
-    cp -R conf.yml /opt/dashy/user-data
-    msg_ok "Restored conf.yml"
-
-    msg_info "Cleaning"
-    rm -rf conf.yml /opt/dashy/public/conf.yml
-    msg_ok "Cleaned"
+    msg_info "Restoring user-data"
+    cp -r /opt/dashy_user_data_backup/. /opt/dashy/user-data/
+    rm -rf /opt/dashy_user_data_backup
+    msg_ok "Restored user-data"
 
     msg_info "Starting Dashy"
     systemctl start dashy
     msg_ok "Started Dashy"
-    msg_ok "Updated Successfully"
+    msg_ok "Updated successfully!"
   fi
   exit
 }
@@ -73,5 +67,5 @@ description
 
 msg_ok "Completed Successfully!\n"
 echo -e "${CREATING}${GN}${APP} setup has been successfully initialized!${CL}"
-echo -e "${INFO}${YW} Access it using the following URL:${CL}"
-echo -e "${TAB}${GATEWAY}${BGN}http://${IP}:4000${CL}"
+echo -e "${INFO}${YW}Access it using the following URL:${CL}"
+echo -e "${GATEWAY}${BGN}http://${IP}:4000${CL}"

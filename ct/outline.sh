@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/build.func)
-# Copyright (c) 2021-2025 community-scripts ORG
+# Copyright (c) 2021-2026 community-scripts ORG
 # Author: Slaviša Arežina (tremor021)
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
 # Source: https://github.com/outline/outline
@@ -11,7 +11,8 @@ var_disk="${var_disk:-8}"
 var_cpu="${var_cpu:-2}"
 var_ram="${var_ram:-4096}"
 var_os="${var_os:-debian}"
-var_version="${var_version:-12}"
+var_version="${var_version:-13}"
+var_arm64="${var_arm64:-no}"
 var_unprivileged="${var_unprivileged:-1}"
 
 header_info "$APP"
@@ -28,7 +29,7 @@ function update_script() {
     exit
   fi
 
-  NODE_VERSION="22" NODE_MODULE="yarn@latest" setup_nodejs
+  NODE_VERSION="24" setup_nodejs
 
   if check_for_gh_release "outline" "outline/outline"; then
     msg_info "Stopping Services"
@@ -41,20 +42,22 @@ function update_script() {
 
     CLEAN_INSTALL=1 fetch_and_deploy_gh_release "outline" "outline/outline" "tarball"
 
-    msg_info "Updating ${APP}"
+    msg_info "Updating Outline"
     cd /opt/outline
     mv /opt/.env /opt/outline
     export NODE_ENV=development
     export NODE_OPTIONS="--max-old-space-size=3584"
-    $STD yarn install --frozen-lockfile
+    export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+    $STD corepack enable
+    $STD yarn install --immutable
     export NODE_ENV=production
     $STD yarn build
-    msg_ok "Updated ${APP}"
+    msg_ok "Updated Outline"
 
     msg_info "Starting Services"
     systemctl start outline
     msg_ok "Started Services"
-    msg_ok "Updated Successfully"
+    msg_ok "Updated successfully!"
   fi
   exit
 }
@@ -63,7 +66,7 @@ start
 build_container
 description
 
-msg_ok "Completed Successfully!\n"
+msg_ok "Completed successfully!\n"
 echo -e "${CREATING}${GN}${APP} setup has been successfully initialized!${CL}"
-echo -e "${INFO}${YW} Access it using the following URL:${CL}"
-echo -e "${TAB}${GATEWAY}${BGN}http://${IP}:3000${CL}"
+echo -e "${INFO}${YW}Access it using the following URL:${CL}"
+echo -e "${GATEWAY}${BGN}http://${IP}:3000${CL}"

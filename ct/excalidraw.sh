@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/build.func)
-# Copyright (c) 2021-2025 community-scripts ORG
+# Copyright (c) 2021-2026 community-scripts ORG
 # Author: Slaviša Arežina (tremor021)
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
 # Source: https://github.com/excalidraw/excalidraw
@@ -11,7 +11,8 @@ var_cpu="${var_cpu:-2}"
 var_ram="${var_ram:-3072}"
 var_disk="${var_disk:-10}"
 var_os="${var_os:-debian}"
-var_version="${var_version:-12}"
+var_version="${var_version:-13}"
+var_arm64="${var_arm64:-no}"
 var_unprivileged="${var_unprivileged:-1}"
 
 header_info "$APP"
@@ -28,23 +29,26 @@ function update_script() {
     msg_error "No ${APP} Installation Found!"
     exit
   fi
+
+  NODE_VERSION="24" NODE_MODULE="yarn" setup_nodejs
+
   if check_for_gh_release "excalidraw" "excalidraw/excalidraw"; then
-    msg_info "Stopping $APP"
+    msg_info "Stopping Service"
     systemctl stop excalidraw
-    msg_ok "Stopped $APP"
+    msg_info "Stopped Service"
 
-    rm -rf /opt/excalidraw
-    fetch_and_deploy_gh_release "excalidraw" "excalidraw/excalidraw"
+    CLEAN_INSTALL=1 fetch_and_deploy_gh_release "excalidraw" "excalidraw/excalidraw" "tarball"
 
-    msg_info "Updating $APP"
+    msg_info "Updating Excalidraw"
     cd /opt/excalidraw
+    $STD yarn config set ignore-engines true
     $STD yarn
-    msg_ok "Updated $APP"
+    msg_ok "Updated Excalidraw"
 
-    msg_info "Starting $APP"
+    msg_info "Starting Service"
     systemctl start excalidraw
-    msg_ok "Started $APP"
-    msg_ok "Updated Successfully"
+    msg_ok "Started Service"
+    msg_ok "Updated successfully!"
   fi
   exit
 }
@@ -53,7 +57,7 @@ start
 build_container
 description
 
-msg_ok "Completed Successfully!\n"
+msg_ok "Completed successfully!\n"
 echo -e "${CREATING}${GN}${APP} setup has been successfully initialized!${CL}"
-echo -e "${INFO}${YW} Access it using the following URL:${CL}"
-echo -e "${TAB}${GATEWAY}${BGN}http://${IP}:3000${CL}"
+echo -e "${INFO}${YW}Access it using the following URL:${CL}"
+echo -e "${GATEWAY}${BGN}http://${IP}:3000${CL}"

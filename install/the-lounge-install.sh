@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
-# Copyright (c) 2021-2025 community-scripts ORG
+# Copyright (c) 2021-2026 community-scripts ORG
 # Author: kristocopani
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
-# Source: https://thelounge.chat/
+# Source: https://thelounge.chat/ | Github: https://github.com/thelounge/thelounge
 
 source /dev/stdin <<<"$FUNCTIONS_FILE_PATH"
 color
@@ -13,12 +13,10 @@ setting_up_container
 network_check
 update_os
 
+NODE_VERSION="22" setup_nodejs
 fetch_and_deploy_gh_release "thelounge" "thelounge/thelounge-deb" "binary"
+systemctl enable -q --now thelounge
 
 motd_ssh
 customize
-
-msg_info "Cleaning up"
-$STD apt-get -y autoremove
-$STD apt-get -y autoclean
-msg_ok "Cleaned"
+cleanup_lxc

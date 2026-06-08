@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/build.func)
-# Copyright (c) 2021-2025 tteck
+# Copyright (c) 2021-2026 tteck
 # Author: tteck (tteckster)
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
-# Source: https://js.wiki/
+# Source: https://js.wiki/ | Github: https://github.com/requarks/wiki
 
 APP="Wikijs"
 var_tags="${var_tags:-wiki}"
@@ -12,6 +12,7 @@ var_ram="${var_ram:-2048}"
 var_disk="${var_disk:-10}"
 var_os="${var_os:-debian}"
 var_version="${var_version:-13}"
+var_arm64="${var_arm64:-no}"
 var_unprivileged="${var_unprivileged:-1}"
 
 header_info "$APP"
@@ -28,7 +29,7 @@ function update_script() {
     exit
   fi
 
-  NODE_VERSION="22" NODE_MODULE="yarn,node-gyp" setup_nodejs
+  NODE_VERSION="24" NODE_MODULE="yarn,node-gyp" setup_nodejs
 
   if check_for_gh_release "wikijs" "requarks/wiki"; then
     msg_info "Verifying whether ${APP}' new release is v3.x+ and current install uses SQLite."
@@ -54,16 +55,13 @@ function update_script() {
     msg_info "Restoring Data"
     cp -R /opt/wikijs-backup/* /opt/wikijs
     $SQLITE_INSTALL && $STD npm rebuild sqlite3
+    rm -rf /opt/wikijs-backup
     msg_ok "Restored Data"
 
     msg_info "Starting Service"
     systemctl start wikijs
     msg_ok "Started Service"
-
-    msg_info "Cleaning Up"
-    rm -rf /opt/wikijs-backup
-    msg_ok "Cleanup Completed"
-    msg_ok "Updated Successfully!"
+    msg_ok "Updated successfully!"
   fi
   exit
 }
@@ -72,7 +70,7 @@ start
 build_container
 description
 
-msg_ok "Completed Successfully!\n"
+msg_ok "Completed successfully!\n"
 echo -e "${CREATING}${GN}${APP} setup has been successfully initialized!${CL}"
-echo -e "${INFO}${YW} Access it using the following URL:${CL}"
-echo -e "${TAB}${GATEWAY}${BGN}http://${IP}:3000${CL}"
+echo -e "${INFO}${YW}Access it using the following URL:${CL}"
+echo -e "${GATEWAY}${BGN}http://${IP}:3000${CL}"

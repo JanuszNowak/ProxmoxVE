@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright (c) 2021-2025 community-scripts ORG
+# Copyright (c) 2021-2026 community-scripts ORG
 # Author: Slaviša Arežina (tremor021)
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
 # Source: https://github.com/hakimel/reveal.js
@@ -19,7 +19,7 @@ fetch_and_deploy_gh_release "revealjs" "hakimel/reveal.js" "tarball"
 msg_info "Configuring ${APPLICATION}"
 cd /opt/revealjs
 $STD npm install
-sed -i '25s/localhost/0.0.0.0/g' /opt/revealjs/gulpfile.js
+sed -i 's/"vite"/"vite --host"/g' package.json
 msg_ok "Setup ${APPLICATION}"
 
 msg_info "Creating Service"
@@ -43,8 +43,4 @@ msg_ok "Created Service"
 
 motd_ssh
 customize
-
-msg_info "Cleaning up"
-$STD apt-get -y autoremove
-$STD apt-get -y autoclean
-msg_ok "Cleaned"
+cleanup_lxc

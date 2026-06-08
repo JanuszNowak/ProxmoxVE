@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright (c) 2021-2025 tteck
+# Copyright (c) 2021-2026 tteck
 # Author: tteck (tteckster)
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
 # Source: https://mosquitto.org/
@@ -13,24 +13,27 @@ setting_up_container
 network_check
 update_os
 
-msg_info "Installing Mosquitto MQTT Broker"
-source /etc/os-release
-$STD apt-get update
-$STD apt-get -y install mosquitto
-$STD apt-get -y install mosquitto-clients
+setup_deb822_repo \
+  "mqtt" \
+  "https://repo.mosquitto.org/debian/mosquitto-repo.gpg" \
+  "https://repo.mosquitto.org/debian" \
+  "trixie"
 
+msg_info "Installing Mosquitto MQTT Broker"
+$STD apt install -y \
+  mosquitto \
+  mosquitto-clients
+msg_ok "Installed Mosquitto MQTT Broker"
+
+msg_info "Configuring Mosquitto MQTT Broker"
 cat <<EOF >/etc/mosquitto/conf.d/default.conf
 allow_anonymous false
 persistence true
 password_file /etc/mosquitto/passwd
 listener 1883
 EOF
-msg_ok "Installed Mosquitto MQTT Broker"
+msg_ok "Configured Mosquitto MQTT Broker"
 
 motd_ssh
 customize
-
-msg_info "Cleaning up"
-$STD apt-get -y autoremove
-$STD apt-get -y autoclean
-msg_ok "Cleaned"
+cleanup_lxc

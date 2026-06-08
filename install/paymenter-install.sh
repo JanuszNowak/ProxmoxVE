@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
-# Copyright (c) 2021-2025 community-scripts ORG
+# Copyright (c) 2021-2026 community-scripts ORG
 # Author: Nícolas Pastorello (opastorello)
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
-# Source: https://www.paymenter.org
+# Source: https://www.paymenter.org | Github: https://github.com/paymenter/paymenter
 
 source /dev/stdin <<<"$FUNCTIONS_FILE_PATH"
 color
@@ -14,14 +14,14 @@ network_check
 update_os
 
 msg_info "Installing Dependencies"
-$STD apt-get install -y \
+$STD apt install -y \
   git \
   nginx \
   redis-server
 msg_ok "Installed Dependencies"
 
 setup_mariadb
-PHP_VERSION="8.3" PHP_FPM="YES" PHP_MODULE="common,mysql,redis" setup_php
+PHP_VERSION="8.3" PHP_FPM="YES" setup_php
 setup_composer
 fetch_and_deploy_gh_release "paymenter" "paymenter/paymenter" "prebuild" "latest" "/opt/paymenter" "paymenter.tar.gz"
 chmod -R 755 /opt/paymenter/storage/* /opt/paymenter/bootstrap/cache/
@@ -114,9 +114,4 @@ msg_ok "Setup Service"
 
 motd_ssh
 customize
-
-msg_info "Cleaning up"
-$STD apt-get -y autoremove
-$STD apt-get -y autoclean
-msg_ok "Cleaned"
-
+cleanup_lxc

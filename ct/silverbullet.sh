@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/build.func)
-# Copyright (c) 2021-2025 community-scripts ORG
+# Copyright (c) 2021-2026 community-scripts ORG
 # Author: Dominik Siebel (dsiebel)
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
-# Source: https://silverbullet.md
+# Source: https://silverbullet.md | Github: https://github.com/silverbulletmd/silverbullet
 
 APP="Silverbullet"
 var_tags="${var_tags:-notes}"
@@ -11,7 +11,8 @@ var_cpu="${var_cpu:-1}"
 var_disk="${var_disk:-2}"
 var_ram="${var_ram:-512}"
 var_os="${var_os:-debian}"
-var_version="${var_version:-12}"
+var_version="${var_version:-13}"
+var_arm64="${var_arm64:-no}"
 
 header_info "${APP}"
 variables
@@ -28,16 +29,16 @@ function update_script() {
   fi
 
   if check_for_gh_release "silverbullet" "silverbulletmd/silverbullet"; then
-    msg_info "Stopping ${APP}"
+    msg_info "Stopping Service"
     systemctl stop silverbullet
-    msg_ok "Stopped ${APP}"
+    msg_ok "Stopped Service"
 
     fetch_and_deploy_gh_release "silverbullet" "silverbulletmd/silverbullet" "prebuild" "latest" "/opt/silverbullet/bin" "silverbullet-server-linux-x86_64.zip"
 
-    msg_info "Starting ${APP}"
+    msg_info "Starting Service"
     systemctl start silverbullet
-    msg_ok "Started ${APP}"
-    msg_ok "Update Successful"
+    msg_ok "Started Service"
+    msg_ok "Updated successfully!"
   fi
   exit
 }
@@ -46,7 +47,7 @@ start
 build_container
 description
 
-msg_ok "Completed Successfully!\n"
+msg_ok "Completed successfully!\n"
 echo -e "${CREATING}${GN}${APP} setup has been successfully initialized!${CL}"
-echo -e "${INFO}${YW} Access it using the following URL:${CL}"
-echo -e "${TAB}${GATEWAY}${BGN}http://${IP}:3000${CL}"
+echo -e "${INFO}${YW}Access it using the following URL:${CL}"
+echo -e "${GATEWAY}${BGN}http://${IP}:3000${CL}"

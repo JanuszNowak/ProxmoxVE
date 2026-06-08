@@ -1,17 +1,18 @@
 #!/usr/bin/env bash
 source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/build.func)
-# Copyright (c) 2021-2025 tteck
+# Copyright (c) 2021-2026 tteck
 # Author: MickLesk (Canbiz)
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
-# Source: https://adventurelog.app/
+# Source: https://github.com/seanmorley15/AdventureLog
 
 APP="AdventureLog"
 var_tags="${var_tags:-traveling}"
 var_disk="${var_disk:-7}"
 var_cpu="${var_cpu:-2}"
-var_ram="${var_ram:-2048}"
+var_ram="${var_ram:-4096}"
 var_os="${var_os:-debian}"
 var_version="${var_version:-13}"
+var_arm64="${var_arm64:-no}"
 var_unprivileged="${var_unprivileged:-1}"
 
 header_info "$APP"
@@ -27,10 +28,7 @@ function update_script() {
     msg_error "No ${APP} Installation Found!"
     exit
   fi
-  if ! command -v memcached >/dev/null 2>&1; then
-    $STD apt update
-    $STD apt install -y memcached libmemcached-tools
-  fi
+  ensure_dependencies memcached libmemcached-tools
   if check_for_gh_release "adventurelog" "seanmorley15/adventurelog"; then
     msg_info "Stopping Services"
     systemctl stop adventurelog-backend
@@ -42,26 +40,32 @@ function update_script() {
     rm -rf /opt/adventurelog
     msg_ok "Backup done"
 
-    fetch_and_deploy_gh_release "adventurelog" "seanmorley15/adventurelog"
+    fetch_and_deploy_gh_release "adventurelog" "seanmorley15/adventurelog" "tarball"
     PYTHON_VERSION="3.13" setup_uv
+
+    msg_info "Ensuring PostgreSQL Extensions"
+    $STD sudo -u postgres psql -d adventurelog_db -c "CREATE EXTENSION IF NOT EXISTS postgis;"
+    msg_ok "PostgreSQL Extensions Ready"
 
     msg_info "Updating ${APP}"
     cp /opt/adventurelog-backup/backend/server/.env /opt/adventurelog/backend/server/.env
     cp -r /opt/adventurelog-backup/backend/server/media /opt/adventurelog/backend/server/media
-    cd /opt/adventurelog/backend/server || exit
+    cd /opt/adventurelog/backend/server
     if [[ ! -x .venv/bin/python ]]; then
-      $STD uv venv .venv
+      $STD uv venv --clear .venv
       $STD .venv/bin/python -m ensurepip --upgrade
     fi
     $STD .venv/bin/python -m pip install --upgrade pip
     $STD .venv/bin/python -m pip install -r requirements.txt
+    $STD .venv/bin/python -m pip install 'djangorestframework<3.15'
     $STD .venv/bin/python -m manage collectstatic --noinput
     $STD .venv/bin/python -m manage migrate
 
     cp /opt/adventurelog-backup/frontend/.env /opt/adventurelog/frontend/.env
-    cd /opt/adventurelog/frontend || exit
+    cd /opt/adventurelog/frontend
     $STD pnpm i
     $STD pnpm build
+    rm -rf /opt/adventurelog-backup
     msg_ok "Updated ${APP}"
 
     msg_info "Starting Services"
@@ -69,11 +73,7 @@ function update_script() {
     systemctl start adventurelog-backend
     systemctl start adventurelog-frontend
     msg_ok "Services Started"
-
-    msg_info "Cleaning Up"
-    rm -rf /opt/adventurelog-backup
-    msg_ok "Cleaned"
-    msg_ok "Updated Successfully"
+    msg_ok "Updated successfully!"
   fi
   exit
 }
@@ -82,7 +82,7 @@ start
 build_container
 description
 
-msg_ok "Completed Successfully!\n"
+msg_ok "Completed successfully!\n"
 echo -e "${CREATING}${GN}${APP} setup has been successfully initialized!${CL}"
-echo -e "${INFO}${YW} Access it using the following URL:${CL}"
-echo -e "${TAB}${GATEWAY}${BGN}http://${IP}:3000${CL}"
+echo -e "${INFO}${YW}Access it using the following URL:${CL}"
+echo -e "${GATEWAY}${BGN}http://${IP}:3000${CL}"

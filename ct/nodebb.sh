@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/build.func)
-# Copyright (c) 2021-2025 community-scripts ORG
+# Copyright (c) 2021-2026 community-scripts ORG
 # Author: MickLesk (Canbiz)
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
-# Source: https://nodebb.org/
+# Source: https://github.com/NodeBB/NodeBB
 
 APP="NodeBB"
 var_tags="${var_tags:-forum}"
@@ -12,6 +12,7 @@ var_cpu="${var_cpu:-4}"
 var_ram="${var_ram:-2048}"
 var_os="${var_os:-ubuntu}"
 var_version="${var_version:-24.04}"
+var_arm64="${var_arm64:-no}"
 var_unprivileged="${var_unprivileged:-1}"
 
 # App Output & Base Settings
@@ -31,9 +32,9 @@ function update_script() {
     exit
   fi
   if check_for_gh_release "nodebb" "NodeBB/NodeBB"; then
-    msg_info "Stopping ${APP}"
+    msg_info "Stopping Service"
     systemctl stop nodebb
-    msg_ok "Stopped ${APP}"
+    msg_ok "Stopped Service"
 
     msg_info "Updating ${APP}"
     cd /opt/nodebb
@@ -41,10 +42,10 @@ function update_script() {
     echo "${CHECK_UPDATE_RELEASE}" >~/.nodebb
     msg_ok "Updated ${APP}"
 
-    msg_info "Starting ${APP}"
+    msg_info "Starting Service"
     systemctl start nodebb
-    msg_ok "Started ${APP}"
-    msg_ok "Updated Successfully\n"
+    msg_ok "Started Service"
+    msg_ok "Updated successfully!"
   fi
   exit
 }
@@ -53,7 +54,7 @@ start
 build_container
 description
 
-msg_ok "Completed Successfully!\n"
+msg_ok "Completed successfully!\n"
 echo -e "${CREATING}${GN}${APP} setup has been successfully initialized!${CL}"
-echo -e "${INFO}${YW} Access it using the following URL:${CL}"
-echo -e "${TAB}${GATEWAY}${BGN}http://${IP}:4567${CL}"
+echo -e "${INFO}${YW}Access it using the following URL:${CL}"
+echo -e "${GATEWAY}${BGN}http://${IP}:4567${CL}"

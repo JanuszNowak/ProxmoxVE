@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-# Copyright (c) 2021-2025 tteck
-# Author: tteck (tteckster)
+# Copyright (c) 2021-2026 community-scripts ORG
+# Author: tteck (tteckster) | Co-Author: CrazyWolf13
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
 # Source: https://dashy.to/
 
@@ -13,13 +13,12 @@ setting_up_container
 network_check
 update_os
 
-NODE_VERSION="22" setup_nodejs
-fetch_and_deploy_gh_release "dashy" "Lissy93/dashy"
+NODE_VERSION="24" NODE_MODULE="yarn" setup_nodejs
+fetch_and_deploy_gh_release "dashy" "Lissy93/dashy" "prebuild" "latest" "/opt/dashy" "dashy-*.tar.gz"
 
 msg_info "Installing Dashy"
 cd /opt/dashy
-$STD npm install
-$STD npm run build
+$STD yarn install --ignore-engines --network-timeout 300000
 msg_ok "Installed Dashy"
 
 msg_info "Creating Service"
@@ -30,17 +29,13 @@ Description=dashy
 [Service]
 Type=simple
 WorkingDirectory=/opt/dashy
-ExecStart=/usr/bin/npm start
+ExecStart=/usr/bin/node server.js
 [Install]
 WantedBy=multi-user.target
 EOF
-systemctl -q --now enable dashy
+systemctl enable -q --now dashy
 msg_ok "Created Service"
 
 motd_ssh
 customize
-
-msg_info "Cleaning up"
-$STD apt-get -y autoremove
-$STD apt-get -y autoclean
-msg_ok "Cleaned"
+cleanup_lxc

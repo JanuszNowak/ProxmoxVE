@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/build.func)
-# Copyright (c) 2021-2025 tteck
+# Copyright (c) 2021-2026 tteck
 # Author: tteck
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
-# Source: https://archivebox.io/
+# Source: https://archivebox.io/ | Github: https://github.com/ArchiveBox/ArchiveBox
 
 APP="ArchiveBox"
 var_tags="${var_tags:-archive;bookmark}"
@@ -12,6 +12,7 @@ var_ram="${var_ram:-1024}"
 var_disk="${var_disk:-8}"
 var_os="${var_os:-debian}"
 var_version="${var_version:-12}"
+var_arm64="${var_arm64:-no}"
 var_unprivileged="${var_unprivileged:-1}"
 
 header_info "$APP"
@@ -28,12 +29,14 @@ function update_script() {
     exit
   fi
 
-  NODE_VERSION="22" setup_nodejs
+  NODE_VERSION="22" NODE_MODULE="@postlight/parser@latest,single-file-cli@latest" setup_nodejs
   PYTHON_VERSION="3.13" setup_uv
 
-  msg_info "Stopping ArchiveBox"
+  ensure_dependencies chromium
+
+  msg_info "Stopping Service"
   systemctl stop archivebox
-  msg_ok "Stopped ArchiveBox"
+  msg_ok "Stopped Service"
 
   msg_info "Upgrading Playwright"
   $STD uv pip install playwright --system
@@ -46,11 +49,10 @@ function update_script() {
   sudo -u archivebox archivebox init
   msg_ok "Updated ArchiveBox"
 
-  msg_info "Starting ArchiveBox"
+  msg_info "Starting Service"
   systemctl start archivebox
-  msg_ok "Started ArchiveBox"
-
-  msg_ok "Updated Successfully"
+  msg_ok "Started Service"
+  msg_ok "Updated successfully!"
   exit
 }
 
@@ -58,7 +60,7 @@ start
 build_container
 description
 
-msg_ok "Completed Successfully!\n"
+msg_ok "Completed successfully!\n"
 echo -e "${CREATING}${GN}${APP} setup has been successfully initialized!${CL}"
-echo -e "${INFO}${YW} Access it using the following URL:${CL}"
-echo -e "${TAB}${GATEWAY}${BGN}http://${IP}:8000/admin/login${CL}"
+echo -e "${INFO}${YW}Access it using the following URL:${CL}"
+echo -e "${GATEWAY}${BGN}http://${IP}:8000/admin/login${CL}"

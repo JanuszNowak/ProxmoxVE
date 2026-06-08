@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/build.func)
-# Copyright (c) 2021-2025 community-scripts ORG
+# Copyright (c) 2021-2026 community-scripts ORG
 # Author: bvdberg01
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
-# Source: https://www.monicahq.com/
+# Source: https://www.monicahq.com/ | Github: https://github.com/monicahq/monica
 
 APP="Monica"
 var_tags="${var_tags:-network}"
@@ -11,7 +11,8 @@ var_cpu="${var_cpu:-2}"
 var_ram="${var_ram:-2048}"
 var_disk="${var_disk:-8}"
 var_os="${var_os:-debian}"
-var_version="${var_version:-12}"
+var_version="${var_version:-13}"
+var_arm64="${var_arm64:-no}"
 var_unprivileged="${var_unprivileged:-1}"
 
 header_info "$APP"
@@ -28,7 +29,13 @@ function update_script() {
     exit
   fi
 
+  setup_mariadb
   NODE_VERSION="22" NODE_MODULE="yarn@latest" setup_nodejs
+
+  # Fix for previous versions not having cronjob
+  if ! grep -Fq 'php /opt/monica/artisan schedule:run' /etc/crontab; then
+    echo '* * * * * root php /opt/monica/artisan schedule:run >> /dev/null 2>&1' >>/etc/crontab
+  fi
 
   if check_for_gh_release "monica" "monicahq/monica"; then
     msg_info "Stopping Service"
@@ -52,16 +59,13 @@ function update_script() {
     $STD php artisan monica:update --force
     chown -R www-data:www-data /opt/monica
     chmod -R 775 /opt/monica/storage
+    rm -r /opt/monica-backup
     msg_ok "Configured monica"
 
     msg_info "Starting Service"
     systemctl start apache2
     msg_ok "Started Service"
-
-    msg_info "Cleaning up"
-    rm -r /opt/monica-backup
-    msg_ok "Cleaned"
-    msg_ok "Updated Successfully"
+    msg_ok "Updated successfully!"
   fi
   exit
 }
@@ -70,7 +74,7 @@ start
 build_container
 description
 
-msg_ok "Completed Successfully!\n"
+msg_ok "Completed successfully!\n"
 echo -e "${CREATING}${GN}${APP} setup has been successfully initialized!${CL}"
-echo -e "${INFO}${YW} Access it using the following URL:${CL}"
-echo -e "${TAB}${GATEWAY}${BGN}http://${IP}${CL}"
+echo -e "${INFO}${YW}Access it using the following URL:${CL}"
+echo -e "${GATEWAY}${BGN}http://${IP}${CL}"

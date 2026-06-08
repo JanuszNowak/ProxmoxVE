@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
-# Copyright (c) 2021-2025 tteck
+# Copyright (c) 2021-2026 tteck
 # Author: tteck (tteckster)
-# License: MIT
-# https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
+# License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
+# Source: https://www.netdata.cloud/ | Github: https://github.com/netdata/netdata
 
 function header_info {
   clear
@@ -26,6 +26,11 @@ BFR="\\r\\033[K"
 HOLD="-"
 CM="${GN}✓${CL}"
 silent() { "$@" >/dev/null 2>&1; }
+
+# Telemetry
+source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/api.func) 2>/dev/null || true
+declare -f init_tool_telemetry &>/dev/null && init_tool_telemetry "netdata" "addon"
+
 set -e
 header_info
 echo "Loading..."
@@ -42,7 +47,7 @@ function msg_ok() {
 function msg_error() { echo -e "${RD}✗ $1${CL}"; }
 
 # This function checks the version of Proxmox Virtual Environment (PVE) and exits if the version is not supported.
-# Supported: Proxmox VE 8.0.x – 8.9.x and 9.0 (NOT 9.1+)
+# Supported: Proxmox VE 8.0.x – 8.9.x and 9.0–9.x
 pve_check() {
   local PVE_VER
   PVE_VER="$(pveversion | awk -F'/' '{print $2}' | awk -F'-' '{print $1}')"
@@ -53,38 +58,32 @@ pve_check() {
     if ((MINOR < 0 || MINOR > 9)); then
       msg_error "This version of Proxmox VE is not supported."
       msg_error "Supported: Proxmox VE version 8.0 – 8.9"
-      exit 1
+      exit 105
     fi
     return 0
   fi
 
-  # Check for Proxmox VE 9.x: allow ONLY 9.0
+  # Check for Proxmox VE 9.x: allow 9.0–9.x
   if [[ "$PVE_VER" =~ ^9\.([0-9]+) ]]; then
-    local MINOR="${BASH_REMATCH[1]}"
-    if ((MINOR != 0)); then
-      msg_error "This version of Proxmox VE is not yet supported."
-      msg_error "Supported: Proxmox VE version 9.0"
-      exit 1
-    fi
     return 0
   fi
 
   # All other unsupported versions
   msg_error "This version of Proxmox VE is not supported."
-  msg_error "Supported versions: Proxmox VE 8.0 – 8.x or 9.0"
-  exit 1
+  msg_error "Supported versions: Proxmox VE 8.0 – 8.9 or 9.0–9.x"
+  exit 105
 }
 
 detect_codename() {
   source /etc/os-release
   if [[ "$ID" != "debian" ]]; then
     msg_error "Unsupported base OS: $ID (only Proxmox VE / Debian supported)."
-    exit 1
+    exit 238
   fi
   CODENAME="${VERSION_CODENAME:-}"
   if [[ -z "$CODENAME" ]]; then
     msg_error "Could not detect Debian codename."
-    exit 1
+    exit 71
   fi
   echo "$CODENAME"
 }
@@ -119,7 +118,7 @@ install() {
   PKG=$(get_latest_repo_pkg "$REPO_URL")
   if [[ -z "$PKG" ]]; then
     msg_error "Could not find netdata-repo package for Debian $CODENAME"
-    exit 1
+    exit 237
   fi
   curl -fsSL "${REPO_URL}${PKG}" -o "$PKG"
   $STD dpkg -i "$PKG"
@@ -130,7 +129,7 @@ install() {
   $STD apt-get update
   $STD apt-get install -y netdata
   msg_ok "Installed Netdata"
-  msg_ok "Completed Successfully!\n"
+  msg_ok "Completed successfully!\n"
   echo -e "\n Netdata should be reachable at${BL} http://$(hostname -I | awk '{print $1}'):19999 ${CL}\n"
 }
 
@@ -148,7 +147,7 @@ uninstall() {
   $STD apt autoremove -y
   $STD userdel netdata || true
   msg_ok "Uninstalled Netdata"
-  msg_ok "Completed Successfully!\n"
+  msg_ok "Completed successfully!\n"
 }
 
 header_info

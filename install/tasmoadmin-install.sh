@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright (c) 2021-2025 tteck
+# Copyright (c) 2021-2026 tteck
 # Author: tteck (tteckster)
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
 # Source: https://github.com/TasmoAdmin/TasmoAdmin
@@ -14,7 +14,7 @@ network_check
 update_os
 
 msg_info "Installing Dependencies"
-$STD apt-get install -y git
+$STD apt install -y git
 msg_ok "Installed Dependencies"
 
 PHP_VERSION="8.4" PHP_APACHE="YES" setup_php
@@ -23,7 +23,7 @@ fetch_and_deploy_gh_release "tasmoadmin" "TasmoAdmin/TasmoAdmin" "prebuild" "lat
 msg_info "Configuring TasmoAdmin"
 rm -rf /etc/php/8.4/apache2/conf.d/10-opcache.ini
 chown -R www-data:www-data /var/www/tasmoadmin
-chmod 777 /var/www/tasmoadmin/tmp /var/www/tasmoadmin/data
+chmod 775 /var/www/tasmoadmin/tmp /var/www/tasmoadmin/data
 cat <<EOF >/etc/apache2/sites-available/tasmoadmin.conf
 <VirtualHost *:9999>
 	ServerName tasmoadmin
@@ -49,8 +49,4 @@ msg_ok "Configured TasmoAdmin"
 
 motd_ssh
 customize
-
-msg_info "Cleaning up"
-$STD apt-get -y autoremove
-$STD apt-get -y autoclean
-msg_ok "Cleaned"
+cleanup_lxc

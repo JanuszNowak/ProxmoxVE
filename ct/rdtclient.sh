@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/build.func)
-# Copyright (c) 2021-2025 tteck
+# Copyright (c) 2021-2026 tteck
 # Author: tteck (tteckster)
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
 # Source: https://github.com/rogerfar/rdt-client
@@ -11,7 +11,8 @@ var_cpu="${var_cpu:-1}"
 var_ram="${var_ram:-1024}"
 var_disk="${var_disk:-4}"
 var_os="${var_os:-debian}"
-var_version="${var_version:-12}"
+var_version="${var_version:-13}"
+var_arm64="${var_arm64:-no}"
 var_unprivileged="${var_unprivileged:-1}"
 
 header_info "$APP"
@@ -39,19 +40,16 @@ function update_script() {
 
     fetch_and_deploy_gh_release "rdt-client" "rogerfar/rdt-client" "prebuild" "latest" "/opt/rdtc" "RealDebridClient.zip"
     cp -R /opt/rdtc-backup/appsettings.json /opt/rdtc/
-    if dpkg-query -W dotnet-sdk-8.0 >/dev/null 2>&1; then
-      $STD apt-get remove --purge -y dotnet-sdk-8.0
-      $STD apt-get install -y dotnet-sdk-9.0
+    if dpkg-query -W aspnetcore-runtime-9.0 >/dev/null 2>&1; then
+      $STD apt remove --purge -y aspnetcore-runtime-9.0
+      ensure_dependencies aspnetcore-runtime-10.0
     fi
+    rm -rf /opt/rdtc-backup
 
     msg_info "Starting Service"
     systemctl start rdtc
     msg_ok "Started Service"
-
-    msg_info "Cleaning Up"
-    rm -rf /opt/rdtc-backup
-    msg_ok "Cleaned"
-    msg_ok "Updated Successfully"
+    msg_ok "Updated successfully!"
   fi
   exit
 }
@@ -60,7 +58,7 @@ start
 build_container
 description
 
-msg_ok "Completed Successfully!\n"
+msg_ok "Completed successfully!\n"
 echo -e "${CREATING}${GN}${APP} setup has been successfully initialized!${CL}"
-echo -e "${INFO}${YW} Access it using the following URL:${CL}"
-echo -e "${TAB}${GATEWAY}${BGN}http://${IP}:6500${CL}"
+echo -e "${INFO}${YW}Access it using the following URL:${CL}"
+echo -e "${GATEWAY}${BGN}http://${IP}:6500${CL}"

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
-# Copyright (c) 2025 Community Scripts ORG
+# Copyright (c) 2021-2026 community-scripts ORG
 # Author: vhsdream
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
-# Source: https://tududi.com/
+# Source: https://tududi.com/ | Github: https://github.com/chrisvel/tududi
 
 source /dev/stdin <<<"$FUNCTIONS_FILE_PATH"
 color
@@ -14,7 +14,7 @@ network_check
 update_os
 
 msg_info "Installing Dependencies"
-$STD apt-get install -y \
+$STD apt install -y \
   sqlite3 \
   yq
 msg_ok "Installed Dependencies"
@@ -28,8 +28,6 @@ $STD npm install
 export NODE_ENV=production
 $STD npm run frontend:build
 mv ./dist ./backend
-mv ./public/locales ./backend/dist
-mv ./public/favicon.* ./backend/dist
 msg_ok "Configured Tududi"
 
 msg_info "Creating env and database"
@@ -37,15 +35,16 @@ DB_LOCATION="/opt/tududi-db"
 UPLOAD_DIR="/opt/tududi-uploads"
 mkdir -p {"$DB_LOCATION","$UPLOAD_DIR"}
 SECRET="$(openssl rand -hex 64)"
-cat <<EOF >/opt/tududi/backend/.env
-TUDUDI_SESSION_SECRET=${SECRET}
-TUDUDI_ALLOWED_ORIGINS=<your tududi IP or FQDN>
-NODE_ENV=production
-DB_FILE=${DB_LOCATION}/production.sqlite3
-TUDUDI_UPLOAD_PATH=${UPLOAD_DIR}
-DISABLE_TELEGRAM=true
-DIABLE_SCHEDULER=false
-EOF
+sed -e '/^NODE_ENV=/s/=.*$/=production/' \
+  -e 's/^TUDUDI_USER/# TUDUDI_USER/g' \
+  -e "/_SECRET=/s/=.*$/=${SECRET}/" \
+  -e '/^# DB_FILE=/s/^# //' \
+  -e "s|^DB_FILE=.*|DB_FILE=${DB_LOCATION}/production.sqlite3|" \
+  -e "/^# TUDUDI_ALLOWED/s/^# //; \
+    \|_ORIGINS=|s|=.*$|=<your tududi IP or FDQN>|" \
+  -e "/^# TUDUDI_UPLOAD/s/^# //; \
+    \|UPLOAD_PATH=|s|=.*$|=${UPLOAD_DIR}|" \
+  /opt/tududi/backend/.env.example >/opt/tududi/backend/.env
 export DB_FILE="${DB_LOCATION}/production.sqlite3"
 $STD npm run db:init
 msg_ok "Created env and database"
@@ -70,8 +69,4 @@ msg_ok "Created service"
 
 motd_ssh
 customize
-
-msg_info "Cleaning up"
-$STD apt-get -y autoremove
-$STD apt-get -y autoclean
-msg_ok "Cleaned"
+cleanup_lxc

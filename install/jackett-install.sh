@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright (c) 2021-2025 tteck
+# Copyright (c) 2021-2026 tteck
 # Author: tteck (tteckster)
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
 # Source: https://github.com/Jackett/Jackett
@@ -14,6 +14,10 @@ network_check
 update_os
 
 fetch_and_deploy_gh_release "jackett" "Jackett/Jackett" "prebuild" "latest" "/opt/Jackett" "Jackett.Binaries.LinuxAMDx64.tar.gz"
+
+cat <<EOF >/opt/.env
+DisableRootWarning=true
+EOF
 
 msg_info "Creating Service"
 cat <<EOF >/etc/systemd/system/jackett.service
@@ -29,7 +33,7 @@ Type=simple
 WorkingDirectory=/opt/Jackett
 ExecStart=/bin/sh /opt/Jackett/jackett_launcher.sh
 TimeoutStopSec=30
-EnvironmentFile="/opt/.env"
+EnvironmentFile=/opt/.env
 
 [Install]
 WantedBy=multi-user.target
@@ -39,8 +43,4 @@ msg_ok "Created Service"
 
 motd_ssh
 customize
-
-msg_info "Cleaning up"
-$STD apt-get -y autoremove
-$STD apt-get -y autoclean
-msg_ok "Cleaned"
+cleanup_lxc

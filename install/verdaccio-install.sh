@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
-# Copyright (c) 2021-2025 community-scripts ORG
+# Copyright (c) 2021-2026 community-scripts ORG
 # Author: BrynnJKnight
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
-# Source: https://verdaccio.org/
+# Source: https://verdaccio.org/ | Github: https://github.com/verdaccio/verdaccio
 
 source /dev/stdin <<<"$FUNCTIONS_FILE_PATH"
 color
@@ -14,17 +14,14 @@ network_check
 update_os
 
 msg_info "Installing Dependencies"
-$STD apt install -y \
-  ca-certificates \
-  build-essential
+$STD apt install -y build-essential
 msg_ok "Installed Dependencies"
 
-NODE_VERSION="22" NODE_MODULE="verdaccio" setup_nodejs
+NODE_VERSION="24" NODE_MODULE="verdaccio" setup_nodejs
 
 msg_info "Configuring Verdaccio"
 mkdir -p /opt/verdaccio/config
 mkdir -p /opt/verdaccio/storage
-
 cat <<EOF >/opt/verdaccio/config/config.yaml
 # Verdaccio configuration
 storage: /opt/verdaccio/storage
@@ -58,7 +55,6 @@ web:
   sort_packages: asc
   login: true
 EOF
-
 chown -R root:root /opt/verdaccio
 chmod -R 755 /opt/verdaccio
 msg_ok "Configured Verdaccio"
@@ -81,15 +77,9 @@ KillMode=control-group
 [Install]
 WantedBy=multi-user.target
 EOF
-
 systemctl enable -q --now verdaccio
 msg_ok "Created Service"
 
 motd_ssh
 customize
-
-msg_info "Cleaning up"
-$STD apt -y autoremove
-$STD apt -y autoclean
-$STD apt -y clean
-msg_ok "Cleaned"
+cleanup_lxc

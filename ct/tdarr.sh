@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/build.func)
-# Copyright (c) 2021-2025 tteck
+# Copyright (c) 2021-2026 tteck
 # Author: tteck (tteckster)
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
 # Source: https://home.tdarr.io/
@@ -11,8 +11,10 @@ var_cpu="${var_cpu:-2}"
 var_ram="${var_ram:-2048}"
 var_disk="${var_disk:-4}"
 var_os="${var_os:-debian}"
-var_version="${var_version:-12}"
+var_version="${var_version:-13}"
+var_arm64="${var_arm64:-no}"
 var_unprivileged="${var_unprivileged:-1}"
+var_gpu="${var_gpu:-yes}"
 
 header_info "$APP"
 variables
@@ -27,22 +29,23 @@ function update_script() {
     msg_error "No ${APP} Installation Found!"
     exit
   fi
-  msg_info "Updating $APP LXC"
-  $STD apt-get update
-  $STD apt-get -y upgrade
+  msg_info "Updating Tdarr"
+  $STD apt update
+  $STD apt upgrade -y
   rm -rf /opt/tdarr/Tdarr_Updater
   cd /opt/tdarr
-  RELEASE=$(curl -fsSL https://f000.backblazeb2.com/file/tdarrs/versions.json | grep -oP '(?<="Tdarr_Updater": ")[^"]+' | grep linux_x64 | head -n 1)
-  curl -fsSL "$RELEASE" -o Tdarr_Updater.zip
+  RELEASE=$(curl_with_retry "https://f000.backblazeb2.com/file/tdarrs/versions.json" "-" | grep -oP '(?<="Tdarr_Updater": ")[^"]+' | grep linux_x64 | head -n 1)
+  curl_with_retry "$RELEASE" "Tdarr_Updater.zip"
   $STD unzip Tdarr_Updater.zip
   chmod +x Tdarr_Updater
   $STD ./Tdarr_Updater
-  msg_ok "Updated $APP LXC"
-
-  msg_info "Cleaning up"
   rm -rf /opt/tdarr/Tdarr_Updater.zip
-  msg_ok "Cleaned"
-  msg_ok "$APP has been successfully updated!"
+  [[ -f /opt/tdarr/Tdarr_Server/Tdarr_Server ]] || {
+    msg_error "Tdarr_Updater failed — tdarr.io may be blocked by local DNS"
+    exit 250
+  }
+  msg_ok "Updated Tdarr"
+  msg_ok "Updated successfully!"
   exit
 }
 
@@ -50,7 +53,7 @@ start
 build_container
 description
 
-msg_ok "Completed Successfully!\n"
+msg_ok "Completed successfully!\n"
 echo -e "${CREATING}${GN}${APP} setup has been successfully initialized!${CL}"
-echo -e "${INFO}${YW} Access it using the following URL:${CL}"
-echo -e "${TAB}${GATEWAY}${BGN}http://${IP}:8265${CL}"
+echo -e "${INFO}${YW}Access it using the following URL:${CL}"
+echo -e "${GATEWAY}${BGN}http://${IP}:8265${CL}"

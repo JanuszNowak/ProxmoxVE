@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/build.func)
-# Copyright (c) 2021-2025 community-scripts ORG
+# Copyright (c) 2021-2026 community-scripts ORG
 # Author: tremor021
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
 # Source: https://www.zerotier.com/
@@ -12,6 +12,7 @@ var_ram="${var_ram:-512}"
 var_disk="${var_disk:-4}"
 var_os="${var_os:-debian}"
 var_version="${var_version:-13}"
+var_arm64="${var_arm64:-no}"
 var_unprivileged="${var_unprivileged:-1}"
 
 header_info "$APP"
@@ -33,14 +34,15 @@ function update_script() {
   systemctl stop zerotier-one
   msg_ok "Stopping Service"
 
-  msg_info "Updating ${APP}"
+  msg_info "Updating Zerotier-One"
   $STD apt update
-  $STD apt -y upgrade
-  msg_ok "Updated ${APP}"
+  $STD apt upgrade -y
+  msg_ok "Updated Zerotier-One"
 
   msg_info "Starting Service"
   systemctl start zerotier-one
   msg_ok "Started Service"
+  msg_ok "Updated successfully!"
   exit
 }
 
@@ -48,7 +50,7 @@ start
 build_container
 description
 
-msg_ok "Completed Successfully!\n"
+msg_ok "Completed successfully!\n"
 echo -e "${CREATING}${GN}${APP} setup has been successfully initialized!${CL}"
-echo -e "${INFO}${YW} Access it using the following IP:${CL}"
-echo -e "${TAB}${GATEWAY}${BGN}https://${IP}:3443${CL}"
+echo -e "${INFO}${YW}Access it using the following IP:${CL}"
+echo -e "${GATEWAY}${BGN}https://${IP}:3443${CL}"

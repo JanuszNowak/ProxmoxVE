@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/build.func)
-# Copyright (c) 2021-2025 community-scripts ORG
+# Copyright (c) 2021-2026 community-scripts ORG
 # Author: Kristian Skov
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
 # Source: https://learn.microsoft.com/en-us/aspnet/core/host-and-deploy/linux-nginx?view=aspnetcore-9.0&tabs=linux-ubuntu
@@ -12,6 +12,7 @@ var_ram="${var_ram:-1024}"
 var_disk="${var_disk:-8}"
 var_os="${var_os:-ubuntu}"
 var_version="${var_version:-24.04}"
+var_arm64="${var_arm64:-no}"
 var_unprivileged="${var_unprivileged:-0}"
 
 header_info "$APP"
@@ -30,7 +31,7 @@ function update_script() {
     msg_info "Updating ${APP} LXC"
     $STD apt-get update
     $STD apt-get -y upgrade
-    msg_ok "Updated Successfully"
+    msg_ok "Updated successfully!"
     exit
 }
 
@@ -38,7 +39,7 @@ start
 build_container
 description
 
-msg_ok "Completed Successfully!\n"
+msg_ok "Completed successfully!\n"
 echo -e "${CREATING}${GN}${APP} setup has been successfully initialized!${CL}"
-echo -e "${INFO}${YW} Access it using the following IP:${CL}"
-echo -e "${TAB}${GATEWAY}${BGN}${IP}:80${CL}"
+echo -e "${INFO}${YW}Access it using the following IP:${CL}"
+echo -e "${GATEWAY}${BGN}${IP}:80${CL}"

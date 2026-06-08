@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
-# Copyright (c) 2021-2025 community-scripts ORG
+# Copyright (c) 2021-2026 community-scripts ORG
 # Author: Slaviša Arežina (tremor021)
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
-# Source: https://signoz.io/
+# Source: https://signoz.io/ | Github: https://github.com/SigNoz/signoz
 
 source /dev/stdin <<<"$FUNCTIONS_FILE_PATH"
 color
@@ -14,7 +14,7 @@ network_check
 update_os
 
 msg_info "Installing Dependencies"
-$STD apt-get install -y \
+$STD apt install -y \
   apt-transport-https \
   ca-certificates
 msg_ok "Installed Dependencies"
@@ -23,10 +23,17 @@ JAVA_VERSION="21" setup_java
 
 msg_info "Setting up ClickHouse"
 curl -fsSL "https://packages.clickhouse.com/rpm/lts/repodata/repomd.xml.key" | gpg --dearmor -o /usr/share/keyrings/clickhouse-keyring.gpg
-echo "deb [signed-by=/usr/share/keyrings/clickhouse-keyring.gpg arch=amd64] https://packages.clickhouse.com/deb stable main" >/etc/apt/sources.list.d/clickhouse.list
-$STD apt-get update
+cat <<EOF >/etc/apt/sources.list.d/clickhouse.sources
+Types: deb
+URIs: https://packages.clickhouse.com/deb
+Suites: stable
+Components: main
+Architectures: amd64
+Signed-By: /usr/share/keyrings/clickhouse-keyring.gpg
+EOF
+$STD apt update
 export DEBIAN_FRONTEND=noninteractive
-$STD apt-get install -y clickhouse-server clickhouse-client
+$STD apt install -y clickhouse-server clickhouse-client
 msg_ok "Setup ClickHouse"
 
 msg_info "Setting up Zookeeper"
@@ -251,13 +258,10 @@ ExecStart=/opt/signoz-otel-collector/bin/signoz-otel-collector --config=/opt/sig
 WantedBy=multi-user.target
 EOF
 systemctl enable -q --now signoz-otel-collector
+rm -rf ~/zookeeper.tar.gz
+rm -rf ~/apache-zookeeper-*-bin
+msg_ok "Setup Signoz OTel Collector"
 
 motd_ssh
 customize
-
-msg_info "Cleaning up"
-rm -rf ~/zookeeper.tar.gz
-rm -rf ~/apache-zookeeper-*-bin
-$STD apt-get -y autoremove
-$STD apt-get -y autoclean
-msg_ok "Cleaned"
+cleanup_lxc

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/build.func)
-# Copyright (c) 2021-2025 community-scripts ORG
+# Copyright (c) 2021-2026 community-scripts ORG
 # Author: BvdBerg01
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
 # Source: https://github.com/sassanix/Warracker/
@@ -12,6 +12,7 @@ var_ram="${var_ram:-512}"
 var_disk="${var_disk:-4}"
 var_os="${var_os:-debian}"
 var_version="${var_version:-13}"
+var_arm64="${var_arm64:-no}"
 var_unprivileged="${var_unprivileged:-1}"
 
 header_info "$APP"
@@ -39,7 +40,7 @@ function update_script() {
 
         msg_info "Updating Warracker"
         cd /opt/warracker/backend
-        $STD uv venv .venv
+        $STD uv venv --clear .venv
         $STD source .venv/bin/activate
         $STD uv pip install -r requirements.txt
         msg_ok "Updated Warracker"
@@ -48,7 +49,7 @@ function update_script() {
         systemctl start warracker
         systemctl start nginx
         msg_ok "Started Services"
-        msg_ok "Updated Successfully"
+        msg_ok "Updated successfully!"
     fi
     exit
 }
@@ -57,7 +58,7 @@ start
 build_container
 description
 
-msg_ok "Completed Successfully!\n"
+msg_ok "Completed successfully!\n"
 echo -e "${CREATING}${GN}${APP} setup has been successfully initialized!${CL}"
-echo -e "${INFO}${YW} Access it using the following URL:${CL}"
-echo -e "${TAB}${GATEWAY}${BGN}http://${IP}${CL}"
+echo -e "${INFO}${YW}Access it using the following URL:${CL}"
+echo -e "${GATEWAY}${BGN}http://${IP}${CL}"

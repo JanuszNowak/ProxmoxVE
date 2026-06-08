@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/build.func)
-# Copyright (c) 2021-2025 tteck
+# Copyright (c) 2021-2026 community-scripts ORG
 # Author: MickLesk (Canbiz)
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
 # Source: https://github.com/alexta69/metube
@@ -11,7 +11,8 @@ var_cpu="${var_cpu:-1}"
 var_ram="${var_ram:-2048}"
 var_disk="${var_disk:-10}"
 var_os="${var_os:-debian}"
-var_version="${var_version:-12}"
+var_version="${var_version:-13}"
+var_arm64="${var_arm64:-no}"
 var_unprivileged="${var_unprivileged:-1}"
 
 header_info "$APP"
@@ -30,7 +31,7 @@ function update_script() {
   fi
 
   if [[ $(echo ":$PATH:" != *":/usr/local/bin:"*) ]]; then
-    echo 'export PATH="/usr/local/bin:$PATH"' >>~/.bashrc
+    echo -e "\nexport PATH=\"/usr/local/bin:\$PATH\"" >>~/.bashrc
     source ~/.bashrc
     if ! command -v deno &>/dev/null; then
       export DENO_INSTALL="/usr/local"
@@ -40,10 +41,12 @@ function update_script() {
     fi
   fi
 
+  NODE_VERSION="24" NODE_MODULE="pnpm" setup_nodejs
+
   if check_for_gh_release "metube" "alexta69/metube"; then
-    msg_info "Stopping ${APP} Service"
+    msg_info "Stopping Service"
     systemctl stop metube
-    msg_ok "Stopped ${APP} Service"
+    msg_ok "Stopped Service"
 
     msg_info "Backing up Old Installation"
     if [[ -d /opt/metube_bak ]]; then
@@ -56,8 +59,13 @@ function update_script() {
 
     msg_info "Building Frontend"
     cd /opt/metube/ui
-    $STD npm install
-    $STD node_modules/.bin/ng build
+    if command -v corepack >/dev/null 2>&1; then
+      $STD corepack enable
+      $STD corepack prepare pnpm --activate || true
+    fi
+    echo 'onlyBuiltDependencies=*' >> .npmrc
+    $STD pnpm install --frozen-lockfile
+    $STD pnpm run build
     msg_ok "Built Frontend"
 
     PYTHON_VERSION="3.13" setup_uv
@@ -67,10 +75,11 @@ function update_script() {
     $STD uv sync
     msg_ok "Installed Backend"
 
-    msg_info "Restoring Environment File"
+    msg_info "Restoring .env"
     if [[ -f /opt/metube_bak/.env ]]; then
       cp /opt/metube_bak/.env /opt/metube/.env
     fi
+    rm -rf /opt/metube_bak
     msg_ok "Restored .env"
 
     if grep -q 'pipenv' /etc/systemd/system/metube.service; then
@@ -79,7 +88,6 @@ function update_script() {
 [Unit]
 Description=Metube - YouTube Downloader
 After=network.target
-
 [Service]
 Type=simple
 WorkingDirectory=/opt/metube
@@ -87,7 +95,6 @@ EnvironmentFile=/opt/metube/.env
 ExecStart=/opt/metube/.venv/bin/python3 app/main.py
 Restart=always
 User=root
-
 [Install]
 WantedBy=multi-user.target
 EOF
@@ -96,26 +103,19 @@ EOF
     $STD systemctl daemon-reload
     msg_ok "Service Updated"
 
-    msg_info "Cleaning up"
-    rm -rf /opt/metube_bak
-    $STD apt-get -y autoremove
-    $STD apt-get -y autoclean
-    msg_ok "Cleaned Up"
-
-    msg_info "Starting ${APP} Service"
+    msg_info "Starting Service"
     systemctl start metube
-    sleep 1
-    msg_ok "Started ${APP} Service"
-
-    msg_ok "Updated Successfully!"
+    msg_ok "Started Service"
+    msg_ok "Updated successfully!"
   fi
+  exit
 }
 
 start
 build_container
 description
 
-msg_ok "Completed Successfully!\n"
+msg_ok "Completed successfully!\n"
 echo -e "${CREATING}${GN}${APP} setup has been successfully initialized!${CL}"
-echo -e "${INFO}${YW} Access it using the following URL:${CL}"
-echo -e "${TAB}${GATEWAY}${BGN}http://${IP}:8081${CL}"
+echo -e "${INFO}${YW}Access it using the following URL:${CL}"
+echo -e "${GATEWAY}${BGN}http://${IP}:8081${CL}"

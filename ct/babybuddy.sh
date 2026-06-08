@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/build.func)
-# Copyright (c) 2021-2025 community-scripts ORG
+# Copyright (c) 2021-2026 community-scripts ORG
 # Author: MickLesk (CanbiZ)
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
 # Source: https://github.com/babybuddy/babybuddy
@@ -12,6 +12,7 @@ var_cpu="${var_cpu:-2}"
 var_ram="${var_ram:-2048}"
 var_os="${var_os:-debian}"
 var_version="${var_version:-12}"
+var_arm64="${var_arm64:-no}"
 var_unprivileged="${var_unprivileged:-1}"
 
 header_info "$APP"
@@ -41,13 +42,14 @@ function update_script() {
     find . -mindepth 1 -maxdepth 1 ! -name '.venv' -exec rm -rf {} +
     msg_ok "Cleaned old files"
 
-    fetch_and_deploy_gh_release "babybuddy" "babybuddy/babybuddy"
+    fetch_and_deploy_gh_release "babybuddy" "babybuddy/babybuddy" "tarball"
 
     msg_info "Updating ${APP}"
     cd /opt/babybuddy
     mv /tmp/production.py.bak /opt/babybuddy/babybuddy/settings/production.py
     source .venv/bin/activate
     $STD uv pip install -r requirements.txt
+    export DJANGO_SETTINGS_MODULE=babybuddy.settings.production
     $STD python manage.py migrate
     msg_ok "Updated ${APP}"
 
@@ -61,7 +63,7 @@ function update_script() {
     systemctl start uwsgi
     systemctl start nginx
     msg_ok "Services Started"
-    msg_ok "Updated Successfully"
+    msg_ok "Updated successfully!"
   fi
   exit
 }
@@ -69,7 +71,7 @@ start
 build_container
 description
 
-msg_ok "Completed Successfully!\n"
+msg_ok "Completed successfully!\n"
 echo -e "${CREATING}${GN}${APP} setup has been successfully initialized!${CL}"
-echo -e "${INFO}${YW} Access it using the following URL:${CL}"
-echo -e "${TAB}${GATEWAY}${BGN}http://${IP}${CL}"
+echo -e "${INFO}${YW}Access it using the following URL:${CL}"
+echo -e "${GATEWAY}${BGN}http://${IP}${CL}"

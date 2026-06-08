@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/build.func)
-# Copyright (c) 2021-2025 tteck
+# Copyright (c) 2021-2026 tteck
 # Author: tteck (tteckster)
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
-# Source: https://autobrr.com/
+# Source: https://autobrr.com/ | Github: https://github.com/autobrr/autobrr
 
 APP="Autobrr"
 var_tags="${var_tags:-arr;}"
@@ -11,7 +11,8 @@ var_cpu="${var_cpu:-2}"
 var_ram="${var_ram:-2048}"
 var_disk="${var_disk:-8}"
 var_os="${var_os:-debian}"
-var_version="${var_version:-12}"
+var_version="${var_version:-13}"
+var_arm64="${var_arm64:-no}"
 var_unprivileged="${var_unprivileged:-1}"
 
 header_info "$APP"
@@ -29,16 +30,16 @@ function update_script() {
   fi
 
   if check_for_gh_release "autobrr" "autobrr/autobrr"; then
-    msg_info "Stopping ${APP} LXC"
+    msg_info "Stopping Service"
     systemctl stop autobrr
-    msg_ok "Stopped ${APP} LXC"
+    msg_ok "Stopped Service"
 
     fetch_and_deploy_gh_release "autobrr" "autobrr/autobrr" "prebuild" "latest" "/usr/local/bin" "autobrr_*_linux_x86_64.tar.gz"
 
-    msg_info "Starting ${APP} LXC"
+    msg_info "Starting Service"
     systemctl start autobrr
-    msg_ok "Started ${APP} LXC"
-    msg_ok "Updated Successfully"
+    msg_ok "Started Service"
+    msg_ok "Updated successfully!"
   fi
   exit
 }
@@ -47,7 +48,7 @@ start
 build_container
 description
 
-msg_ok "Completed Successfully!\n"
+msg_ok "Completed successfully!\n"
 echo -e "${CREATING}${GN}${APP} setup has been successfully initialized!${CL}"
-echo -e "${INFO}${YW} Access it using the following URL:${CL}"
-echo -e "${TAB}${GATEWAY}${BGN}http://${IP}:7474${CL}"
+echo -e "${INFO}${YW}Access it using the following URL:${CL}"
+echo -e "${GATEWAY}${BGN}http://${IP}:7474${CL}"

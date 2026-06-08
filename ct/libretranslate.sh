@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-source <(curl -s https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/build.func)
-# Copyright (c) 2021-2025 community-scripts ORG
+source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/build.func)
+# Copyright (c) 2021-2026 community-scripts ORG
 # Author: Slaviša Arežina (tremor021)
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
 # Source: https://github.com/LibreTranslate/LibreTranslate
@@ -11,8 +11,10 @@ var_cpu="${var_cpu:-2}"
 var_ram="${var_ram:-2048}"
 var_disk="${var_disk:-20}"
 var_os="${var_os:-debian}"
-var_version="${var_version:-12}"
+var_version="${var_version:-13}"
+var_arm64="${var_arm64:-no}"
 var_unprivileged="${var_unprivileged:-1}"
+var_gpu="${var_gpu:-yes}"
 
 header_info "$APP"
 variables
@@ -28,21 +30,24 @@ function update_script() {
     msg_error "No ${APP} Installation Found!"
     exit
   fi
-  if check_for_gh_release "libretranslate" "LibreTranslate/LibreTranslate"; then
-    msg_info "Stopping $APP"
-    systemctl stop libretranslate
-    msg_ok "Stopped $APP"
 
-    msg_info "Updating $APP"
+  PYTHON_VERSION="3.12" setup_uv
+
+  if check_for_gh_release "libretranslate" "LibreTranslate/LibreTranslate"; then
+    msg_info "Stopping Service"
+    systemctl stop libretranslate
+    msg_ok "Stopped Service"
+
+    msg_info "Updating LibreTranslate"
     cd /opt/libretranslate
     source .venv/bin/activate
-    $STD pip install -U libretranslate
-    msg_ok "Updated $APP"
+    $STD uv pip install -U libretranslate
+    msg_ok "Updated LibreTranslate"
 
-    msg_info "Starting $APP"
+    msg_info "Starting Service"
     systemctl start libretranslate
-    msg_ok "Started $APP"
-    msg_ok "Update Successful"
+    msg_ok "Started Service"
+    msg_ok "Updated successfully!"
   fi
   exit
 }
@@ -51,7 +56,7 @@ start
 build_container
 description
 
-msg_ok "Completed Successfully!\n"
+msg_ok "Completed successfully!\n"
 echo -e "${CREATING}${GN}${APP} setup has been successfully initialized!${CL}"
-echo -e "${INFO}${YW} Access it using the following URL:${CL}"
-echo -e "${TAB}${GATEWAY}${BGN}http://${IP}:5000${CL}"
+echo -e "${INFO}${YW}Access it using the following URL:${CL}"
+echo -e "${GATEWAY}${BGN}http://${IP}:5000${CL}"

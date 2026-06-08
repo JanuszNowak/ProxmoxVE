@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/build.func)
-# Copyright (c) 2021-2025 community-scripts ORG
+# Copyright (c) 2021-2026 community-scripts ORG
 # Author: CrazyWolf13
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
 # Source: https://github.com/influxdata/telegraf
@@ -11,7 +11,8 @@ var_cpu="${var_cpu:-1}"
 var_ram="${var_ram:-1024}"
 var_disk="${var_disk:-4}"
 var_os="${var_os:-debian}"
-var_version="${var_version:-12}"
+var_version="${var_version:-13}"
+var_arm64="${var_arm64:-no}"
 var_unprivileged="${var_unprivileged:-1}"
 
 header_info "$APP"
@@ -28,19 +29,19 @@ function update_script() {
     exit
   fi
 
-  msg_info "Stopping $APP"
+  msg_info "Stopping Service"
   systemctl stop telegraf
-  msg_ok "Stopped $APP"
+  msg_ok "Stopped Service"
 
-  msg_info "Updating $APP"
-  $STD apt-get update
-  $STD apt-get upgrade telegraf -y
-  msg_ok "Updated $APP"
+  msg_info "Updating Telegraf"
+  $STD apt update
+  $STD apt upgrade -y telegraf
+  msg_ok "Updated Telegraf"
 
-  msg_info "Starting $APP"
+  msg_info "Starting Service"
   systemctl start telegraf
-  msg_ok "Started $APP"
-  msg_ok "Updated Successfully"
+  msg_ok "Started Service"
+  msg_ok "Updated successfully!"
   exit
 }
 
@@ -48,5 +49,5 @@ start
 build_container
 description
 
-msg_ok "Completed Successfully!\n"
+msg_ok "Completed successfully!\n"
 echo -e "${CREATING}${GN}${APP} setup has been successfully initialized!${CL}"

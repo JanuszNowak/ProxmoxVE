@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-#Copyright (c) 2021-2025 community-scripts ORG
+# Copyright (c) 2021-2026 community-scripts ORG
 # Author: tremor021
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
 # Source: https://www.zerotier.com/
@@ -13,6 +13,17 @@ setting_up_container
 network_check
 update_os
 
+msg_warn "WARNING: This script will run an external installer from a third-party source (https://install.zerotier.com)."
+msg_warn "The following code is NOT maintained or audited by our repository."
+msg_warn "If you have any doubts or concerns, please review the installer code before proceeding:"
+msg_custom "${TAB3}${GATEWAY}${BGN}${CL}" "\e[1;34m" "→  https://install.zerotier.com"
+echo
+read -r -p "${TAB3}Do you want to continue? [y/N]: " CONFIRM
+if [[ ! $CONFIRM =~ ^([yY][eE][sS]|[yY])$ ]]; then
+  msg_error "Aborted by user. No changes have been made."
+  exit 10
+fi
+
 msg_info "Setting up Zerotier-One"
 curl -fsSL https://raw.githubusercontent.com/zerotier/ZeroTierOne/main/doc/contact%40zerotier.com.gpg | gpg --import >/dev/null 2>&1
 curl -fsSL https://install.zerotier.com -o /tmp/zerotier-install.sh
@@ -20,7 +31,7 @@ if gpg --verify /tmp/zerotier-install.sh >/dev/null 2>&1; then
   $STD bash /tmp/zerotier-install.sh
 else
   msg_warn "Could not verify signature of Zerotier-One install script. Exiting..."
-  exit 1
+  exit 250
 fi
 msg_ok "Setup Zerotier-One"
 
@@ -33,13 +44,8 @@ echo NODE_ENV=production >>/opt/key-networks/ztncui/.env
 chmod 400 /opt/key-networks/ztncui/.env
 chown ztncui:ztncui /opt/key-networks/ztncui/.env
 systemctl restart ztncui
-msg_ok "Done setting up UI."
+msg_ok "Setup UI."
 
 motd_ssh
 customize
-
-msg_info "Cleaning up"
-$STD apt -y autoremove
-$STD apt -y autoclean
-$STD apt -y clean
-msg_ok "Cleaned"
+cleanup_lxc
