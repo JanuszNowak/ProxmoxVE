@@ -57,15 +57,21 @@ function prompt_github_runner_settings() {
 
   while true; do
     read -r -p "GitHub Repository or Organization URL (e.g. https://github.com/owner/repo or https://github.com/org): " GH_URL
-    [[ -n "$GH_URL" && "$GH_URL" =~ ^https://github\.com/ ]] && break
-    msg_error "GitHub URL must not be empty and must start with https://github.com/"
+    [[ -n "$GH_URL" && "$GH_URL" =~ ^https://github\.com/[^/]+(/[^/]+)?/?$ ]] && break
+    msg_error "GitHub URL must be a valid repository or organization URL"
   done
 
   while true; do
-    read -r -s -p "Runner Registration Token: " GH_TOKEN
+    read -r -p "Runner Scope Type [repo/org]: " GH_SCOPE
+    [[ "$GH_SCOPE" == "repo" || "$GH_SCOPE" == "org" ]] && break
+    msg_error "Scope type must be 'repo' or 'org'"
+  done
+
+  while true; do
+    read -r -s -p "GitHub Personal Access Token (PAT): " GH_PAT
     echo
-    [[ -n "$GH_TOKEN" ]] && break
-    msg_error "Runner Registration Token cannot be empty"
+    [[ -n "$GH_PAT" ]] && break
+    msg_error "GitHub PAT cannot be empty"
   done
 
   read -r -p "Runner Name [${HN}]: " GH_RUNNER_NAME
@@ -78,6 +84,52 @@ function prompt_github_runner_settings() {
   GH_WORK="${GH_WORK:-_work}"
 
   msg_ok "GitHub Runner configuration collected"
+}
+
+function parse_github_url() {
+  local stripped path_parts
+  stripped="${GH_URL#https://github.com/}"
+  stripped="${stripped%/}"
+
+  IFS='/' read -r GH_OWNER GH_REPO <<< "$stripped"
+
+  if [[ "$GH_SCOPE" == "repo" ]]; then
+    if [[ -z "$GH_OWNER" || -z "$GH_REPO" ]]; then
+      msg_error "Repository scope requires URL like https://github.com/owner/repo"
+      exit 1
+    fi
+    GH_API_URL="https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/actions/runners/registration-token"
+  else
+    if [[ -z "$GH_OWNER" ]]; then
+      msg_error "Organization scope requires URL like https://github.com/org"
+      exit 1
+    fi
+    GH_API_URL="https://api.github.com/orgs/${GH_OWNER}/actions/runners/registration-token"
+    GH_REPO=""
+  fi
+}
+
+function get_runner_token() {
+  msg_info "Requesting GitHub runner registration token"
+
+  RESPONSE="$(curl -fsSL -X POST \
+    -H "Accept: application/vnd.github+json" \
+    -H "Authorization: Bearer ${GH_PAT}" \
+    -H "X-GitHub-Api-Version: 2022-11-28" \
+    "${GH_API_URL}")" || {
+      msg_error "Failed to request runner registration token"
+      exit 1
+    }
+
+  GH_TOKEN="$(echo "$RESPONSE" | jq -r '.token')"
+
+  if [[ -z "$GH_TOKEN" || "$GH_TOKEN" == "null" ]]; then
+    msg_error "GitHub API did not return a registration token"
+    echo "$RESPONSE"
+    exit 1
+  fi
+
+  msg_ok "Runner registration token acquired"
 }
 
 function install_github_runner() {
@@ -100,7 +152,8 @@ function install_github_runner() {
   msg_info "Testing network connectivity"
   pct exec "$CT_ID" -- bash -c "
     getent hosts github.com >/dev/null 2>&1 || exit 1
-    getent hosts objects.githubusercontent.com >/dev/null 2>&1 || exit 2
+    getent hosts api.github.com >/dev/null 2>&1 || exit 2
+    getent hosts objects.githubusercontent.com >/dev/null 2>&1 || exit 3
   "
   msg_ok "Network connectivity looks good"
 
@@ -169,6 +222,8 @@ start
 build_container
 description
 prompt_github_runner_settings
+parse_github_url
+get_runner_token
 install_github_runner
 
 if declare -f motd_ssh >/dev/null 2>&1; then
