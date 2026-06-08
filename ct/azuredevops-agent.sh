@@ -175,7 +175,11 @@ build_container
 description
 prompt_azuredevops_settings
 install_azuredevops_agent
-motd_ssh
+
+if declare -f motd_ssh >/dev/null 2>&1; then
+  motd_ssh
+fi
+
 customize
 
 msg_ok "Completed Successfully!"
