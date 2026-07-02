@@ -12,7 +12,7 @@ var_ram="${var_ram:-2048}"
 var_disk="${var_disk:-5}"
 var_os="${var_os:-debian}"
 var_version="${var_version:-13}"
-var_arm64="${var_arm64:-no}"
+var_arm64="${var_arm64:-yes}"
 var_unprivileged="${var_unprivileged:-1}"
 
 header_info "$APP"
@@ -29,7 +29,7 @@ function update_script() {
   fi
 
   if check_for_gh_release "wishlist" "cmintey/wishlist"; then
-    NODE_VERSION="24" NODE_MODULE="pnpm" setup_nodejs
+    NODE_VERSION="24" NODE_MODULE="pnpm@11" setup_nodejs
 
     msg_info "Stopping Service"
     systemctl stop wishlist

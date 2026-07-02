@@ -346,12 +346,39 @@ pve_check() {
 # - Provides link to ARM64-compatible scripts
 # ------------------------------------------------------------------------------
 arch_check() {
-  if [ "$(dpkg --print-architecture)" != "amd64" ]; then
-    msg_error "This script will not work with PiMox (ARM architecture detected)."
-    msg_warn "Visit https://github.com/asylumexp/Proxmox for ARM64 support."
+  local arch
+  arch="$(dpkg --print-architecture)"
+  if [[ "$arch" != "amd64" && "$arch" != "arm64" ]]; then
+    msg_error "This script requires amd64 or arm64 (detected: $arch)."
     sleep 2
     exit 106
   fi
+  if [[ "$arch" == "arm64" && "${var_arm64:-}" != "yes" ]]; then
+    msg_error "This script does not yet support arm64."
+    sleep 2
+    exit 106
+  fi
+}
+
+# ------------------------------------------------------------------------------
+# arch_resolve()
+#
+# - Selects an architecture-specific value while preserving amd64 defaults
+# - Usage: arch_resolve "amd64-value" "arm64-value"
+# - Defaults: amd64="amd64", arm64="arm64"
+# ------------------------------------------------------------------------------
+arch_resolve() {
+  local amd64_val="${1:-amd64}"
+  local arm64_val="${2:-arm64}"
+  local arch="${PCT_ARCH:-$(dpkg --print-architecture 2>/dev/null || uname -m)}"
+  case "$arch" in
+  amd64 | x86_64) echo "$amd64_val" ;;
+  arm64 | aarch64) echo "$arm64_val" ;;
+  *)
+    msg_error "Unsupported architecture: $arch"
+    return 106
+    ;;
+  esac
 }
 
 # ------------------------------------------------------------------------------
@@ -941,6 +968,53 @@ is_alpine() {
 is_verbose_mode() {
   local verbose="${VERBOSE:-${var_verbose:-no}}"
   [[ "$verbose" != "no" ]]
+}
+
+# ------------------------------------------------------------------------------
+# configure_http_proxy()
+#
+# - Applies var_http_proxy / var_http_no_proxy inside the container
+# - Persists proxy env for login shells, systemd, and package managers
+# - Skips APT proxy config when APT Cacher-NG is active
+# ------------------------------------------------------------------------------
+configure_http_proxy() {
+  local proxy="${HTTP_PROXY:-${http_proxy:-${var_http_proxy:-}}}"
+  local noproxy="${HTTP_NO_PROXY:-${no_proxy:-${var_http_no_proxy:-}}}"
+  [[ -z "$proxy" ]] && return 0
+  [[ -z "$noproxy" ]] && noproxy="localhost,127.0.0.1,.local"
+
+  msg_info "Configuring HTTP proxy"
+  cat >/etc/profile.d/90-http-proxy.sh <<EOF
+export http_proxy="$proxy"
+export https_proxy="$proxy"
+export HTTP_PROXY="$proxy"
+export HTTPS_PROXY="$proxy"
+export no_proxy="$noproxy"
+export NO_PROXY="$noproxy"
+EOF
+  chmod 644 /etc/profile.d/90-http-proxy.sh
+
+  if ! grep -q '^http_proxy=' /etc/environment 2>/dev/null; then
+    cat >>/etc/environment <<EOF
+http_proxy=$proxy
+https_proxy=$proxy
+HTTP_PROXY=$proxy
+HTTPS_PROXY=$proxy
+no_proxy=$noproxy
+NO_PROXY=$noproxy
+EOF
+  fi
+
+  if [[ "${CACHER:-}" != "yes" && -d /etc/apt/apt.conf.d ]]; then
+    cat >/etc/apt/apt.conf.d/95http-proxy <<EOF
+Acquire::http::Proxy "$proxy";
+Acquire::https::Proxy "$proxy";
+EOF
+  fi
+
+  export http_proxy="$proxy" https_proxy="$proxy" HTTP_PROXY="$proxy" HTTPS_PROXY="$proxy"
+  export no_proxy="$noproxy" NO_PROXY="$noproxy"
+  msg_ok "Configured HTTP proxy"
 }
 
 # ------------------------------------------------------------------------------
@@ -1714,6 +1788,38 @@ function get_lxc_ip() {
   export LOCAL_IP
 }
 
+# ------------------------------------------------------------------------------
+# ensure_whiptail()
+#
+# - Ensures whiptail is installed
+# - Some ARM64 systems will not have whiptail installed
+# - Exits with error message if installation fails
+# ------------------------------------------------------------------------------
+ensure_whiptail() {
+  command -v whiptail >/dev/null 2>&1 && return 0
+
+  msg_info "Installing whiptail"
+  apt_update_safe
+  $STD apt-get install -y whiptail || {
+    msg_error "Failed to install whiptail"
+    exit 100
+  }
+  msg_ok "Installed whiptail"
+}
+
+# ------------------------------------------------------------------------------
+# arm64_notice()
+#
+# - Shows a short warning when running scripts on ARM64 systems
+# ------------------------------------------------------------------------------
+arm64_notice() {
+  [[ "$(dpkg --print-architecture)" == "arm64" ]] || return 0
+
+  whiptail --backtitle "Proxmox VE Helper Scripts" \
+    --title "ARM64 SUPPORT" \
+    --ok-button "Continue" \
+    --msgbox "ARM64 support is in active development.\n\nSome scripts, packages, or application releases may not be fully tested or working yet." 10 68
+}
 # ==============================================================================
 # SIGNAL TRAPS
 # ==============================================================================

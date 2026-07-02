@@ -12,7 +12,7 @@ var_ram="${var_ram:-4096}"
 var_disk="${var_disk:-12}"
 var_os="${var_os:-ubuntu}"
 var_version="${var_version:-24.04}"
-var_arm64="${var_arm64:-no}"
+var_arm64="${var_arm64:-yes}"
 
 header_info "$APP"
 variables
@@ -28,7 +28,7 @@ function update_script() {
     exit
   fi
   if check_for_gh_release "linkwarden" "linkwarden/linkwarden"; then
-    NODE_VERSION="22" NODE_MODULE="yarn@latest" setup_nodejs
+    NODE_VERSION="22" NODE_MODULE="corepack,yarn@latest" setup_nodejs
     msg_info "Stopping Service"
     systemctl stop linkwarden
     msg_ok "Stopped Service"
@@ -54,7 +54,7 @@ function update_script() {
       fi
     fi
     if command -v corepack >/dev/null 2>&1; then
-      $STD corepack enable
+
       $STD corepack prepare "yarn@${yarn_ver}" --activate || true
     fi
     $STD yarn

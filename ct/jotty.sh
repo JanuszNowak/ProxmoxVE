@@ -12,7 +12,7 @@ var_ram="${var_ram:-1024}"
 var_disk="${var_disk:-4}"
 var_os="${var_os:-debian}"
 var_version="${var_version:-13}"
-var_arm64="${var_arm64:-no}"
+var_arm64="${var_arm64:-yes}"
 var_unprivileged="${var_unprivileged:-1}"
 
 header_info "$APP"
@@ -47,7 +47,7 @@ function update_script() {
     msg_info "Restoring configuration & data"
     mv /opt/app.env /opt/jotty/.env
     [[ -d /opt/data ]] && mv /opt/data /opt/jotty/data
-    [[ -d /opt/jotty/config ]] && cp -a /opt/config/* /opt/jotty/config && rm -rf /opt/config
+    [[ -d /opt/config ]] && cp -a /opt/config/* /opt/jotty/config && rm -rf /opt/config
     msg_ok "Restored configuration & data"
 
     msg_info "Starting Service"

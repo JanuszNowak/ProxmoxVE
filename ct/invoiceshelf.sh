@@ -12,7 +12,7 @@ var_ram="${var_ram:-1024}"
 var_disk="${var_disk:-4}"
 var_os="${var_os:-debian}"
 var_version="${var_version:-13}"
-var_arm64="${var_arm64:-no}"
+var_arm64="${var_arm64:-yes}"
 var_unprivileged="${var_unprivileged:-1}"
 
 header_info "$APP"
@@ -52,8 +52,13 @@ function update_script() {
     msg_info "Updating Application"
     cd /opt/invoiceshelf
     $STD composer install --no-dev --optimize-autoloader
-    $STD yarn install
-    $STD yarn build
+    if command -v corepack >/dev/null 2>&1; then
+      $STD corepack pnpm install
+      $STD corepack pnpm run build
+    else
+      $STD pnpm install
+      $STD pnpm run build
+    fi
     $STD php artisan migrate --force
     $STD php artisan optimize:clear
     chown -R www-data:www-data /opt/invoiceshelf
