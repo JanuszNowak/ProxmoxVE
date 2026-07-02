@@ -6,7 +6,7 @@ source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxV
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
 # Source: https://learn.microsoft.com/en-us/azure/devops/pipelines/agents/linux-agent
 
-APP="AzureDevOps Agent"
+APP="AzureDevOpsAgent"
 var_tags="${var_tags:-ci;devops;azure;agent}"
 var_cpu="${var_cpu:-2}"
 var_ram="${var_ram:-4096}"
